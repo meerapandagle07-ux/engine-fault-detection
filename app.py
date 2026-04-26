@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
 # Load dataset
-data = pd.read_excel("/content/engine_fault_dataset_10000.xlsx")
+data = pd.read_excel("engine_fault_dataset_10000.xlsx")
 
 # Features & Target
 X = data[['Temperature', 'Vibration', 'Sound']]
