@@ -183,8 +183,17 @@ st.bar_chart(df.set_index("Feature"))
 
 # ---------------- HISTORY ---------------- #
 st.subheader("📜 Prediction History")
-st.write(st.session_state.history)
+if st.session_state.history:
+    df_history = pd.DataFrame(st.session_state.history,
+                             columns=["Temperature", "Vibration", "Sound", "Prediction"])
 
+    # Convert numbers to labels
+    label_map = {0: "Normal", 1: "Maintenance", 2: "Fault"}
+    df_history["Prediction"] = df_history["Prediction"].map(label_map)
+
+    st.dataframe(df_history)
+else:
+    st.info("No predictions yet. Click 'Predict' to see history.")
 # ---------------- RESET BUTTON ---------------- #
 if st.button("🔄 Reset"):
     st.session_state.clear()
