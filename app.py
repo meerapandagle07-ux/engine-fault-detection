@@ -11,7 +11,7 @@ st.set_page_config(page_title="Engine Fault Detection", layout="centered")
 st.image("https://cdn-icons-png.flaticon.com/512/743/743922.png", width=120)
 st.title("🚗 Intelligent Engine Health Monitoring & Fault Diagnosis System")
 
-st.write("This system predicts engine condition using Temperature (°C), Vibration (mm/s), and Sound (dB).")
+st.write("Predict engine condition using Temperature (°C), Vibration (mm/s), and Sound (dB).")
 
 st.markdown("---")
 
@@ -31,7 +31,7 @@ temperature = st.sidebar.slider("🌡 Temperature (°C)", 60, 120)
 vibration = st.sidebar.slider("🔧 Vibration (mm/s)", 0, 100)
 sound = st.sidebar.slider("🔊 Sound (dB)", 0, 100)
 
-# ---------------- SYSTEM STATUS BADGE ---------------- #
+# ---------------- SYSTEM STATUS ---------------- #
 if temperature <= 85 and vibration <= 15 and sound <= 60:
     st.markdown("### 🟢 System Status: HEALTHY")
 elif temperature <= 100 and vibration <= 30 and sound <= 80:
@@ -62,7 +62,7 @@ elif temperature <= 100 and vibration <= 30 and sound <= 80:
 else:
     st.error("🔴 Engine Status: Critical Condition")
 
-# ---------------- THRESHOLD WARNINGS ---------------- #
+# ---------------- WARNINGS ---------------- #
 st.subheader("⚠️ Real-Time Monitoring")
 
 normal = True
@@ -100,10 +100,11 @@ st.write(f"📈 Model Accuracy: {acc*100:.2f}%")
 
 st.markdown("---")
 
-# ---------------- PREDICTION ---------------- #
+# ---------------- SESSION ---------------- #
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# ---------------- PREDICTION ---------------- #
 if st.button("🔍 Predict Engine Condition"):
     prediction = model.predict([[temperature, vibration, sound]])
     probability = model.predict_proba([[temperature, vibration, sound]])
@@ -123,7 +124,7 @@ if st.button("🔍 Predict Engine Condition"):
         st.write("- Monitor engine regularly")
 
     else:
-        st.error(f"🚨 Fault / Misfire Detected ({confidence:.2f}% confident)")
+        st.error(f"🚨 Fault Detected ({confidence:.2f}% confident)")
         st.write("🔧 Recommended Action:")
         st.write("- Check spark plug")
         st.write("- Inspect fuel system")
@@ -133,14 +134,14 @@ if st.button("🔍 Predict Engine Condition"):
     st.subheader("🧠 Diagnosis Explanation")
 
     if temperature > 100:
-        st.write("• High temperature indicates overheating issue")
+        st.write("• Overheating detected")
     if vibration > 30:
-        st.write("• High vibration suggests mechanical imbalance")
+        st.write("• Mechanical imbalance")
     if sound > 80:
-        st.write("• High sound indicates abnormal engine condition")
+        st.write("• Abnormal engine noise")
 
     if temperature <= 85 and vibration <= 15 and sound <= 60:
-        st.write("• All parameters are within safe limits")
+        st.write("• All parameters are normal")
 
     # Save history
     st.session_state.history.append([temperature, vibration, sound, prediction[0]])
@@ -149,7 +150,7 @@ if st.button("🔍 Predict Engine Condition"):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=confidence,
-        title={'text': "Prediction Confidence (%)"},
+        title={'text': "Confidence (%)"},
         gauge={
             'axis': {'range': [0, 100]},
             'steps': [
@@ -187,11 +188,11 @@ st.write(st.session_state.history)
 # ---------------- RESET BUTTON ---------------- #
 if st.button("🔄 Reset"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # ---------------- FOOTER ---------------- #
 st.markdown("---")
-st.info("💡 Tip: Switch to Dark Mode for better visualization")
-st.write("👩‍💻 Developed by Meera Pandagale | AIML Project")
+st.info("💡 Tip: Use dark mode for better experience")
+st.write("👩‍💻 Developed by Meera Pandagale")
 
   
