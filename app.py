@@ -1,207 +1,179 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-import plotly.graph_objects as go
+from datetime import datetime
+import time
 
-# ---------------- PAGE CONFIG ---------------- #
-st.set_page_config(page_title="Engine Fault Detection", layout="centered")
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
+st.set_page_config(page_title="Engine AI Dashboard", layout="wide")
 
-# ---------------- HEADER ---------------- #
-st.image("https://cdn-icons-png.flaticon.com/512/743/743922.png", width=120)
-st.title("🚗 Intelligent Engine Health Monitoring & Fault Diagnosis System")
+st.title("🚗 AI-Based Engine Monitoring Dashboard")
 
-st.write("Predict engine condition using Temperature (°C), Vibration (mm/s), and Sound (dB).")
+# -----------------------------
+# SIDEBAR
+# -----------------------------
+st.sidebar.header("⚙ Control Panel")
 
-st.markdown("---")
+mode = st.sidebar.radio("Select Mode", ["Manual Input", "Live Simulation"])
 
-# ---------------- LOAD DATA ---------------- #
-data = pd.read_excel("engine_fault_dataset_10000.xlsx")
+# -----------------------------
+# INPUTS
+# -----------------------------
+if mode == "Manual Input":
+    temp = st.sidebar.slider("Temperature (°C)", 0, 150, 50)
+    vib = st.sidebar.slider("Vibration (mm/s)", 0, 100, 20)
+    sound = st.sidebar.slider("Sound (dB)", 0, 120, 30)
+else:
+    temp = np.random.randint(30, 130)
+    vib = np.random.randint(10, 100)
+    sound = np.random.randint(20, 110)
+    st.sidebar.write("Live values updating...")
 
-X = data[['Temperature', 'Vibration', 'Sound']]
-y = data['Condition']
+# -----------------------------
+# DISPLAY INPUTS
+# -----------------------------
+col1, col2, col3 = st.columns(3)
+
+col1.metric("🌡 Temperature", f"{temp} °C")
+col2.metric("📳 Vibration", f"{vib} mm/s")
+col3.metric("🔊 Sound", f"{sound} dB")
+
+# -----------------------------
+# ENGINE LOAD
+# -----------------------------
+st.subheader("⚙ Engine Load")
+
+load = (temp + vib + sound) / 3
+load = min(max(int(load), 0), 100)
+
+st.progress(load)
+st.write(f"Load: {load}%")
+
+# -----------------------------
+# DATASET (REALISTIC)
+# -----------------------------
+data = pd.DataFrame({
+    "Temperature": np.random.randint(20, 130, 300),
+    "Vibration": np.random.randint(5, 100, 300),
+    "Sound": np.random.randint(10, 110, 300),
+})
+
+def label_engine(row):
+    if row["Temperature"] > 100 or row["Vibration"] > 80 or row["Sound"] > 90:
+        return 2
+    elif row["Temperature"] > 70 or row["Vibration"] > 50:
+        return 1
+    else:
+        return 0
+
+data["Status"] = data.apply(label_engine, axis=1)
+
+# -----------------------------
+# MODEL
+# -----------------------------
+X = data[["Temperature", "Vibration", "Sound"]]
+y = data["Status"]
 
 model = RandomForestClassifier(n_estimators=100)
 model.fit(X, y)
 
-# ---------------- SIDEBAR INPUT ---------------- #
-st.sidebar.title("⚙️ Input Panel")
+labels = {0: "Normal", 1: "Maintenance", 2: "Fault"}
 
-temperature = st.sidebar.slider("🌡 Temperature (°C)", 60, 120)
-vibration = st.sidebar.slider("🔧 Vibration (mm/s)", 0, 100)
-sound = st.sidebar.slider("🔊 Sound (dB)", 0, 100)
-
-# ---------------- SYSTEM STATUS ---------------- #
-if temperature <= 85 and vibration <= 15 and sound <= 60:
-    st.markdown("### 🟢 System Status: HEALTHY")
-elif temperature <= 100 and vibration <= 30 and sound <= 80:
-    st.markdown("### 🟡 System Status: WARNING")
-else:
-    st.markdown("### 🔴 System Status: CRITICAL")
-
-# ---------------- INPUT SUMMARY ---------------- #
-st.subheader("📋 Input Summary")
-st.write(f"Temperature: {temperature} °C")
-st.write(f"Vibration: {vibration} mm/s")
-st.write(f"Sound: {sound} dB")
-
-# ---------------- ENGINE LOAD ---------------- #
-st.subheader("⚙️ Engine Load Indicator")
-load = int((temperature + vibration + sound) / 3)
-st.progress(load)
-
-st.markdown("---")
-
-# ---------------- LIVE HEALTH STATUS ---------------- #
-st.subheader("🩺 Engine Health Status (Live)")
-
-if temperature <= 85 and vibration <= 15 and sound <= 60:
-    st.success("🟢 Engine Status: Healthy")
-elif temperature <= 100 and vibration <= 30 and sound <= 80:
-    st.warning("🟡 Engine Status: Needs Attention")
-else:
-    st.error("🔴 Engine Status: Critical Condition")
-
-# ---------------- WARNINGS ---------------- #
-st.subheader("⚠️ Real-Time Monitoring")
-
-normal = True
-
-if temperature > 100:
-    st.error("🔥 High Temperature! Risk of overheating")
-    normal = False
-elif temperature > 85:
-    st.warning("⚠️ Temperature slightly high")
-    normal = False
-
-if vibration > 30:
-    st.error("🔧 High Vibration! Possible mechanical issue")
-    normal = False
-elif vibration > 15:
-    st.warning("⚠️ Moderate vibration detected")
-    normal = False
-
-if sound > 80:
-    st.error("🔊 High Noise! Possible engine fault")
-    normal = False
-elif sound > 60:
-    st.warning("⚠️ Noise level increasing")
-    normal = False
-
-if normal:
-    st.success("✅ All parameters are within normal range")
-
-st.markdown("---")
-
-# ---------------- MODEL ACCURACY ---------------- #
-pred_train = model.predict(X)
-acc = accuracy_score(y, pred_train)
-st.write(f"📈 Model Accuracy: {acc*100:.2f}%")
-
-st.markdown("---")
-
-# ---------------- SESSION ---------------- #
+# -----------------------------
+# SESSION STATE
+# -----------------------------
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# ---------------- PREDICTION ---------------- #
-if st.button("🔍 Predict Engine Condition"):
-    prediction = model.predict([[temperature, vibration, sound]])
-    probability = model.predict_proba([[temperature, vibration, sound]])
+# -----------------------------
+# PREDICT
+# -----------------------------
+if st.button("🔍 Analyze Engine"):
 
-    confidence = max(probability[0]) * 100
+    pred = model.predict([[temp, vib, sound]])[0]
+    conf = max(model.predict_proba([[temp, vib, sound]])[0]) * 100
 
-    st.subheader("🤖 Prediction Result")
+    label = labels[pred]
+    time_now = datetime.now().strftime("%d-%b %H:%M:%S")
 
-    if prediction[0] == 0:
-        st.success(f"✅ Normal Engine ({confidence:.2f}% confident)")
-        st.write("✔ No action needed")
+    st.session_state.history.append(
+        [time_now, temp, vib, sound, label, round(conf, 2)]
+    )
 
-    elif prediction[0] == 1:
-        st.warning(f"⚠️ Maintenance Required ({confidence:.2f}% confident)")
-        st.write("🔧 Recommended Action:")
-        st.write("- Schedule maintenance")
-        st.write("- Monitor engine regularly")
+    st.subheader("🧠 AI Result")
 
+    if pred == 0:
+        st.success(f"{label} ({conf:.2f}%)")
+    elif pred == 1:
+        st.warning(f"{label} ({conf:.2f}%)")
     else:
-        st.error(f"🚨 Fault Detected ({confidence:.2f}% confident)")
-        st.write("🔧 Recommended Action:")
-        st.write("- Check spark plug")
-        st.write("- Inspect fuel system")
-        st.write("- Visit service center")
+        st.error(f"{label} ({conf:.2f}%)")
 
-    # ---------------- DIAGNOSIS ---------------- #
-    st.subheader("🧠 Diagnosis Explanation")
+    # Diagnosis
+    st.subheader("🔍 Diagnosis")
 
-    if temperature > 100:
-        st.write("• Overheating detected")
-    if vibration > 30:
-        st.write("• Mechanical imbalance")
-    if sound > 80:
-        st.write("• Abnormal engine noise")
+    if temp > 100:
+        st.write("🔥 Overheating detected")
+    if vib > 80:
+        st.write("⚙ Mechanical imbalance")
+    if sound > 90:
+        st.write("🔊 Noise abnormality")
 
-    if temperature <= 85 and vibration <= 15 and sound <= 60:
-        st.write("• All parameters are normal")
+# -----------------------------
+# HISTORY
+# -----------------------------
+st.subheader("📜 History")
 
-    # Save history
-    st.session_state.history.append([temperature, vibration, sound, prediction[0]])
-
-    # ---------------- GAUGE ---------------- #
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=confidence,
-        title={'text': "Confidence (%)"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'steps': [
-                {'range': [0, 40], 'color': "red"},
-                {'range': [40, 70], 'color': "yellow"},
-                {'range': [70, 100], 'color': "green"}
-            ],
-        }
-    ))
-    st.plotly_chart(fig)
-
-    # ---------------- DOWNLOAD ---------------- #
-    result_df = pd.DataFrame({
-        "Temperature": [temperature],
-        "Vibration": [vibration],
-        "Sound": [sound],
-        "Prediction": [prediction[0]]
-    })
-
-    st.download_button("📥 Download Report", result_df.to_csv(index=False), "report.csv")
-
-# ---------------- FEATURE IMPORTANCE ---------------- #
-st.subheader("📊 Feature Importance")
-
-importance = model.feature_importances_
-features = ["Temperature", "Vibration", "Sound"]
-
-df = pd.DataFrame({"Feature": features, "Importance": importance})
-st.bar_chart(df.set_index("Feature"))
-
-# ---------------- HISTORY ---------------- #
-st.subheader("📜 Prediction History")
 if st.session_state.history:
-    df_history = pd.DataFrame(st.session_state.history,
-                             columns=["Temperature", "Vibration", "Sound", "Prediction"])
+    df = pd.DataFrame(
+        st.session_state.history,
+        columns=["Time", "Temp", "Vibration", "Sound", "Prediction", "Confidence"]
+    )
 
-    # Convert numbers to labels
-    label_map = {0: "Normal", 1: "Maintenance", 2: "Fault"}
-    df_history["Prediction"] = df_history["Prediction"].map(label_map)
+    st.dataframe(df)
 
-    st.dataframe(df_history)
+    # -----------------------------
+    # CHARTS
+    # -----------------------------
+    st.subheader("📈 Trends")
+    st.line_chart(df[["Temp", "Vibration", "Sound"]])
+
+    # -----------------------------
+    # FAULT DISTRIBUTION
+    # -----------------------------
+    st.subheader("📊 Fault Distribution")
+
+    chart_data = df["Prediction"].value_counts()
+    st.bar_chart(chart_data)
+
+    # -----------------------------
+    # DOWNLOAD
+    # -----------------------------
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇ Download Report", csv, "report.csv")
+
 else:
-    st.info("No predictions yet. Click 'Predict' to see history.")
-# ---------------- RESET BUTTON ---------------- #
-if st.button("🔄 Reset"):
-    st.session_state.clear()
+    st.write("No data yet")
+
+# -----------------------------
+# AUTO REFRESH (LIVE MODE)
+# -----------------------------
+if mode == "Live Simulation":
+    time.sleep(2)
     st.rerun()
 
-# ---------------- FOOTER ---------------- #
-st.markdown("---")
-st.info("💡 Tip: Use dark mode for better experience")
-st.write("👩‍💻 Developed by Meera Pandagale")
+# -----------------------------
+# RESET
+# -----------------------------
+if st.button("🔄 Reset Data"):
+    st.session_state.history = []
 
-  
+# -----------------------------
+# FOOTER
+# -----------------------------
+st.markdown("---")
+st.success("✅ AI Powered Monitoring Active")
+st.write("👩‍💻 Developed by Meera Pandagale")
