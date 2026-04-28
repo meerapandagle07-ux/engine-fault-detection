@@ -3,46 +3,35 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from datetime import datetime
-import time
+import plotly.graph_objects as go
 
 # -----------------------------
-# PAGE CONFIG
+# PAGE SETUP
 # -----------------------------
-st.set_page_config(page_title="Engine AI Dashboard", layout="wide")
+st.set_page_config(page_title="Engine Dashboard", layout="wide")
 
-st.title("🚗 AI-Based Engine Monitoring Dashboard")
-
-# -----------------------------
-# SIDEBAR
-# -----------------------------
-st.sidebar.header("⚙ Control Panel")
-
-mode = st.sidebar.radio("Select Mode", ["Manual Input", "Live Simulation"])
+st.title("🚗 Intelligent Engine Monitoring Dashboard")
+st.markdown("---")
 
 # -----------------------------
-# INPUTS
+# SIDEBAR INPUT
 # -----------------------------
-if mode == "Manual Input":
-    temp = st.sidebar.slider("Temperature (°C)", 0, 150, 50)
-    vib = st.sidebar.slider("Vibration (mm/s)", 0, 100, 20)
-    sound = st.sidebar.slider("Sound (dB)", 0, 120, 30)
-else:
-    temp = np.random.randint(30, 130)
-    vib = np.random.randint(10, 100)
-    sound = np.random.randint(20, 110)
-    st.sidebar.write("Live values updating...")
+st.sidebar.header("⚙ Input Panel")
+
+temp = st.sidebar.slider("🌡 Temperature (°C)", 0, 150, 50)
+vib = st.sidebar.slider("🔧 Vibration (mm/s)", 0, 100, 20)
+sound = st.sidebar.slider("🔊 Sound (dB)", 0, 120, 30)
 
 # -----------------------------
 # DISPLAY INPUTS
 # -----------------------------
 col1, col2, col3 = st.columns(3)
-
-col1.metric("🌡 Temperature", f"{temp} °C")
-col2.metric("📳 Vibration", f"{vib} mm/s")
-col3.metric("🔊 Sound", f"{sound} dB")
+col1.metric("Temperature", f"{temp} °C")
+col2.metric("Vibration", f"{vib} mm/s")
+col3.metric("Sound", f"{sound} dB")
 
 # -----------------------------
-# ENGINE LOAD
+# ENGINE LOAD (FIXED)
 # -----------------------------
 st.subheader("⚙ Engine Load")
 
@@ -53,12 +42,44 @@ st.progress(load)
 st.write(f"Load: {load}%")
 
 # -----------------------------
-# DATASET (REALISTIC)
+# HEALTH SCORE
+# -----------------------------
+health_score = 100 - load
+
+st.subheader("💚 Engine Health Score")
+st.metric("Health", f"{health_score}%")
+
+# -----------------------------
+# SYSTEM STATUS
+# -----------------------------
+st.subheader("🚨 System Status")
+
+if load < 40:
+    st.success("✅ Engine Safe")
+elif load < 70:
+    st.warning("⚠ Moderate Load")
+else:
+    st.error("🚨 High Risk")
+
+# -----------------------------
+# CRITICAL PARAMETERS
+# -----------------------------
+st.subheader("🔍 Critical Parameters")
+
+if temp > 100:
+    st.error("🔥 High Temperature")
+if vib > 80:
+    st.error("⚙ High Vibration")
+if sound > 90:
+    st.error("🔊 High Noise")
+
+# -----------------------------
+# MODEL (REALISTIC)
 # -----------------------------
 data = pd.DataFrame({
-    "Temperature": np.random.randint(20, 130, 300),
-    "Vibration": np.random.randint(5, 100, 300),
-    "Sound": np.random.randint(10, 110, 300),
+    "Temperature": np.random.randint(20, 130, 200),
+    "Vibration": np.random.randint(5, 100, 200),
+    "Sound": np.random.randint(10, 110, 200),
 })
 
 def label_engine(row):
@@ -71,16 +92,13 @@ def label_engine(row):
 
 data["Status"] = data.apply(label_engine, axis=1)
 
-# -----------------------------
-# MODEL
-# -----------------------------
 X = data[["Temperature", "Vibration", "Sound"]]
 y = data["Status"]
 
 model = RandomForestClassifier(n_estimators=100)
 model.fit(X, y)
 
-labels = {0: "Normal", 1: "Maintenance", 2: "Fault"}
+labels = {0: "Normal", 1: "Maintenance Required", 2: "Fault Detected"}
 
 # -----------------------------
 # SESSION STATE
@@ -89,43 +107,54 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # -----------------------------
-# PREDICT
+# PREDICT BUTTON
 # -----------------------------
 if st.button("🔍 Analyze Engine"):
 
     pred = model.predict([[temp, vib, sound]])[0]
     conf = max(model.predict_proba([[temp, vib, sound]])[0]) * 100
-
     label = labels[pred]
+
     time_now = datetime.now().strftime("%d-%b %H:%M:%S")
 
     st.session_state.history.append(
         [time_now, temp, vib, sound, label, round(conf, 2)]
     )
 
-    st.subheader("🧠 AI Result")
+    # -----------------------------
+    # RESULT
+    # -----------------------------
+    st.subheader("🧠 AI Diagnosis")
 
     if pred == 0:
-        st.success(f"{label} ({conf:.2f}%)")
+        st.success(f"✔ {label} ({conf:.2f}%)")
     elif pred == 1:
-        st.warning(f"{label} ({conf:.2f}%)")
+        st.warning(f"⚠ {label} ({conf:.2f}%)")
     else:
-        st.error(f"{label} ({conf:.2f}%)")
+        st.error(f"❌ {label} ({conf:.2f}%)")
 
-    # Diagnosis
-    st.subheader("🔍 Diagnosis")
-
-    if temp > 100:
-        st.write("🔥 Overheating detected")
-    if vib > 80:
-        st.write("⚙ Mechanical imbalance")
-    if sound > 90:
-        st.write("🔊 Noise abnormality")
+    # -----------------------------
+    # GAUGE CHART
+    # -----------------------------
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=health_score,
+        title={'text': "Health Score"},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'steps': [
+                {'range': [0, 40], 'color': "red"},
+                {'range': [40, 70], 'color': "yellow"},
+                {'range': [70, 100], 'color': "green"}
+            ]
+        }
+    ))
+    st.plotly_chart(fig)
 
 # -----------------------------
 # HISTORY
 # -----------------------------
-st.subheader("📜 History")
+st.subheader("📜 Prediction History")
 
 if st.session_state.history:
     df = pd.DataFrame(
@@ -133,37 +162,23 @@ if st.session_state.history:
         columns=["Time", "Temp", "Vibration", "Sound", "Prediction", "Confidence"]
     )
 
-    st.dataframe(df)
+    st.dataframe(df, use_container_width=True)
 
     # -----------------------------
-    # CHARTS
+    # SINGLE CLEAN GRAPH
     # -----------------------------
-    st.subheader("📈 Trends")
-    st.line_chart(df[["Temp", "Vibration", "Sound"]])
+    st.subheader("📈 Trend")
 
-    # -----------------------------
-    # FAULT DISTRIBUTION
-    # -----------------------------
-    st.subheader("📊 Fault Distribution")
-
-    chart_data = df["Prediction"].value_counts()
-    st.bar_chart(chart_data)
+    st.line_chart(df.set_index("Time")[["Temp", "Vibration", "Sound"]])
 
     # -----------------------------
     # DOWNLOAD
     # -----------------------------
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇ Download Report", csv, "report.csv")
+    st.download_button("⬇ Download Report", csv, "engine_report.csv")
 
 else:
-    st.write("No data yet")
-
-# -----------------------------
-# AUTO REFRESH (LIVE MODE)
-# -----------------------------
-if mode == "Live Simulation":
-    time.sleep(2)
-    st.rerun()
+    st.info("No predictions yet")
 
 # -----------------------------
 # RESET
@@ -175,5 +190,5 @@ if st.button("🔄 Reset Data"):
 # FOOTER
 # -----------------------------
 st.markdown("---")
-st.success("✅ AI Powered Monitoring Active")
+st.success("✅ System Active")
 st.write("👩‍💻 Developed by Meera Pandagale")
