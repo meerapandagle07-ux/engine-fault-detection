@@ -23,7 +23,7 @@ vib = st.sidebar.slider("🔧 Vibration (mm/s)", 0, 100, 20)
 sound = st.sidebar.slider("🔊 Sound (dB)", 0, 120, 30)
 
 # -----------------------------
-# MODEL (REALISTIC)
+# MODEL (REALISTIC DATA)
 # -----------------------------
 data = pd.DataFrame({
     "Temperature": np.random.randint(20, 130, 200),
@@ -55,6 +55,9 @@ labels = {0: "Normal", 1: "Maintenance Required", 2: "Fault Detected"}
 if "history" not in st.session_state:
     st.session_state.history = []
 
+if "count" not in st.session_state:
+    st.session_state.count = 0
+
 # -----------------------------
 # TABS
 # -----------------------------
@@ -70,16 +73,38 @@ with tab1:
     col2.metric("Vibration", f"{vib} mm/s")
     col3.metric("Sound", f"{sound} dB")
 
+    # Engine Load
     st.subheader("⚙ Engine Load")
     load = (temp + vib + sound) / 3
     load = min(max(int(load), 0), 100)
     st.progress(load)
     st.write(f"Load: {load}%")
 
-    st.subheader("💚 Health Score")
+    # Health Score
     health_score = 100 - load
+    st.subheader("💚 Engine Health Score")
     st.metric("Health", f"{health_score}%")
 
+    # Risk Level
+    if load < 40:
+        risk = "Low Risk"
+        st.success("🟢 Overall Status: Healthy")
+    elif load < 70:
+        risk = "Medium Risk"
+        st.warning("🟡 Overall Status: Moderate")
+    else:
+        risk = "High Risk"
+        st.error("🔴 Overall Status: Critical")
+
+    st.write(f"⚠ Risk Level: {risk}")
+
+    # Parameter Check
+    st.subheader("📊 Parameter Check")
+    st.write(f"Temperature: {temp} / 85 (Safe)")
+    st.write(f"Vibration: {vib} / 15 (Safe)")
+    st.write(f"Sound: {sound} / 60 (Safe)")
+
+    # Predict Button
     if st.button("🔍 Analyze Engine"):
 
         pred = model.predict([[temp, vib, sound]])[0]
@@ -89,6 +114,7 @@ with tab1:
         st.session_state.last_pred = pred
         st.session_state.last_label = label
         st.session_state.last_conf = conf
+        st.session_state.count += 1
 
         time_now = datetime.now().strftime("%d-%b %H:%M:%S")
 
@@ -96,6 +122,7 @@ with tab1:
             [time_now, temp, vib, sound, label, round(conf, 2)]
         )
 
+        # Result
         st.subheader("🧠 Prediction Result")
 
         if pred == 0:
@@ -104,6 +131,7 @@ with tab1:
             st.warning(f"⚠ {label} ({conf:.2f}%)")
         else:
             st.error(f"❌ {label} ({conf:.2f}%)")
+            st.error("🚨 ALERT: Immediate attention required!")
 
         # Gauge Chart
         fig = go.Figure(go.Indicator(
@@ -120,6 +148,13 @@ with tab1:
             }
         ))
         st.plotly_chart(fig)
+
+    # Last Prediction
+    if "last_label" in st.session_state:
+        st.info(f"Last Prediction: {st.session_state.last_label}")
+
+    # Prediction Count
+    st.write(f"Total Predictions: {st.session_state.count}")
 
 # -----------------------------
 # TAB 2: DIAGNOSIS
@@ -167,7 +202,7 @@ with tab3:
 
         st.dataframe(df, use_container_width=True)
 
-        # SIMPLE GRAPH (Easy to understand)
+        # Simple Graph
         st.subheader("📈 Temperature Trend")
         st.line_chart(df.set_index("Time")["Temp"])
 
@@ -176,13 +211,14 @@ with tab3:
         st.download_button("⬇ Download Report", csv, "engine_report.csv")
 
     else:
-        st.info("No data yet")
+        st.info("No predictions yet. Start analyzing engine.")
 
 # -----------------------------
 # RESET
 # -----------------------------
 if st.button("🔄 Reset Data"):
     st.session_state.history = []
+    st.session_state.count = 0
 
 # -----------------------------
 # FOOTER
