@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 # -----------------------------
 st.set_page_config(page_title="Engine Dashboard", layout="wide")
 
-st.title("🚗 Intelligent Engine Monitoring Dashboard")
+st.title("🚗 Intelligent Engine Monitoring System")
 st.markdown("---")
 
 # -----------------------------
@@ -21,57 +21,6 @@ st.sidebar.header("⚙ Input Panel")
 temp = st.sidebar.slider("🌡 Temperature (°C)", 0, 150, 50)
 vib = st.sidebar.slider("🔧 Vibration (mm/s)", 0, 100, 20)
 sound = st.sidebar.slider("🔊 Sound (dB)", 0, 120, 30)
-
-# -----------------------------
-# DISPLAY INPUTS
-# -----------------------------
-col1, col2, col3 = st.columns(3)
-col1.metric("Temperature", f"{temp} °C")
-col2.metric("Vibration", f"{vib} mm/s")
-col3.metric("Sound", f"{sound} dB")
-
-# -----------------------------
-# ENGINE LOAD (FIXED)
-# -----------------------------
-st.subheader("⚙ Engine Load")
-
-load = (temp + vib + sound) / 3
-load = min(max(int(load), 0), 100)
-
-st.progress(load)
-st.write(f"Load: {load}%")
-
-# -----------------------------
-# HEALTH SCORE
-# -----------------------------
-health_score = 100 - load
-
-st.subheader("💚 Engine Health Score")
-st.metric("Health", f"{health_score}%")
-
-# -----------------------------
-# SYSTEM STATUS
-# -----------------------------
-st.subheader("🚨 System Status")
-
-if load < 40:
-    st.success("✅ Engine Safe")
-elif load < 70:
-    st.warning("⚠ Moderate Load")
-else:
-    st.error("🚨 High Risk")
-
-# -----------------------------
-# CRITICAL PARAMETERS
-# -----------------------------
-st.subheader("🔍 Critical Parameters")
-
-if temp > 100:
-    st.error("🔥 High Temperature")
-if vib > 80:
-    st.error("⚙ High Vibration")
-if sound > 90:
-    st.error("🔊 High Noise")
 
 # -----------------------------
 # MODEL (REALISTIC)
@@ -107,78 +56,127 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # -----------------------------
-# PREDICT BUTTON
+# TABS
 # -----------------------------
-if st.button("🔍 Analyze Engine"):
+tab1, tab2, tab3 = st.tabs(["🔍 Prediction", "🧠 Diagnosis", "📊 Analytics"])
 
-    pred = model.predict([[temp, vib, sound]])[0]
-    conf = max(model.predict_proba([[temp, vib, sound]])[0]) * 100
-    label = labels[pred]
+# -----------------------------
+# TAB 1: PREDICTION
+# -----------------------------
+with tab1:
 
-    time_now = datetime.now().strftime("%d-%b %H:%M:%S")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Temperature", f"{temp} °C")
+    col2.metric("Vibration", f"{vib} mm/s")
+    col3.metric("Sound", f"{sound} dB")
 
-    st.session_state.history.append(
-        [time_now, temp, vib, sound, label, round(conf, 2)]
-    )
+    st.subheader("⚙ Engine Load")
+    load = (temp + vib + sound) / 3
+    load = min(max(int(load), 0), 100)
+    st.progress(load)
+    st.write(f"Load: {load}%")
 
-    # -----------------------------
-    # RESULT
-    # -----------------------------
-    st.subheader("🧠 AI Diagnosis")
+    st.subheader("💚 Health Score")
+    health_score = 100 - load
+    st.metric("Health", f"{health_score}%")
 
-    if pred == 0:
-        st.success(f"✔ {label} ({conf:.2f}%)")
-    elif pred == 1:
-        st.warning(f"⚠ {label} ({conf:.2f}%)")
+    if st.button("🔍 Analyze Engine"):
+
+        pred = model.predict([[temp, vib, sound]])[0]
+        conf = max(model.predict_proba([[temp, vib, sound]])[0]) * 100
+        label = labels[pred]
+
+        st.session_state.last_pred = pred
+        st.session_state.last_label = label
+        st.session_state.last_conf = conf
+
+        time_now = datetime.now().strftime("%d-%b %H:%M:%S")
+
+        st.session_state.history.append(
+            [time_now, temp, vib, sound, label, round(conf, 2)]
+        )
+
+        st.subheader("🧠 Prediction Result")
+
+        if pred == 0:
+            st.success(f"✔ {label} ({conf:.2f}%)")
+        elif pred == 1:
+            st.warning(f"⚠ {label} ({conf:.2f}%)")
+        else:
+            st.error(f"❌ {label} ({conf:.2f}%)")
+
+        # Gauge Chart
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=health_score,
+            title={'text': "Health Score"},
+            gauge={
+                'axis': {'range': [0, 100]},
+                'steps': [
+                    {'range': [0, 40], 'color': "red"},
+                    {'range': [40, 70], 'color': "yellow"},
+                    {'range': [70, 100], 'color': "green"}
+                ]
+            }
+        ))
+        st.plotly_chart(fig)
+
+# -----------------------------
+# TAB 2: DIAGNOSIS
+# -----------------------------
+with tab2:
+
+    st.subheader("🔍 Diagnosis")
+
+    if "last_pred" in st.session_state:
+
+        if temp > 100:
+            st.error("🔥 Overheating Issue")
+        if vib > 80:
+            st.error("⚙ Mechanical Imbalance")
+        if sound > 90:
+            st.error("🔊 Noise Problem")
+
+        st.subheader("🛠 Recommended Action")
+
+        if st.session_state.last_pred == 2:
+            st.write("• Check spark plug")
+            st.write("• Inspect fuel system")
+            st.write("• Visit service center")
+        elif st.session_state.last_pred == 1:
+            st.write("• Schedule maintenance")
+        else:
+            st.write("• System is working normally")
+
     else:
-        st.error(f"❌ {label} ({conf:.2f}%)")
-
-    # -----------------------------
-    # GAUGE CHART
-    # -----------------------------
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=health_score,
-        title={'text': "Health Score"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'steps': [
-                {'range': [0, 40], 'color': "red"},
-                {'range': [40, 70], 'color': "yellow"},
-                {'range': [70, 100], 'color': "green"}
-            ]
-        }
-    ))
-    st.plotly_chart(fig)
+        st.info("Run prediction first")
 
 # -----------------------------
-# HISTORY
+# TAB 3: ANALYTICS
 # -----------------------------
-st.subheader("📜 Prediction History")
+with tab3:
 
-if st.session_state.history:
-    df = pd.DataFrame(
-        st.session_state.history,
-        columns=["Time", "Temp", "Vibration", "Sound", "Prediction", "Confidence"]
-    )
+    st.subheader("📜 Prediction History")
 
-    st.dataframe(df, use_container_width=True)
+    if st.session_state.history:
 
-    # -----------------------------
-    # SINGLE CLEAN GRAPH
-    # -----------------------------
-    st.subheader("📈 Trend")
+        df = pd.DataFrame(
+            st.session_state.history,
+            columns=["Time", "Temp", "Vibration", "Sound", "Prediction", "Confidence"]
+        )
 
-    st.line_chart(df.set_index("Time")[["Temp", "Vibration", "Sound"]])
+        st.dataframe(df, use_container_width=True)
 
-    # -----------------------------
-    # DOWNLOAD
-    # -----------------------------
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇ Download Report", csv, "engine_report.csv")
+        # SIMPLE GRAPH (Easy to understand)
+        st.subheader("📈 Temperature Trend")
+        st.line_chart(df.set_index("Time")["Temp"])
 
-else:
-    st.info("No predictions yet")
+        # Download
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button("⬇ Download Report", csv, "engine_report.csv")
+
+    else:
+        st.info("No data yet")
 
 # -----------------------------
 # RESET
