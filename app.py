@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 # PAGE SETUP
 # -----------------------------
 st.set_page_config(page_title="Engine Dashboard", layout="wide")
-
 st.title("🚗 Intelligent Engine Monitoring System")
 st.markdown("---")
 
@@ -87,24 +86,13 @@ with tab1:
 
     # Risk Level
     if load < 40:
-        risk = "Low Risk"
-        st.success("🟢 Overall Status: Healthy")
+        st.success("🟢 Healthy")
     elif load < 70:
-        risk = "Medium Risk"
-        st.warning("🟡 Overall Status: Moderate")
+        st.warning("🟡 Moderate")
     else:
-        risk = "High Risk"
-        st.error("🔴 Overall Status: Critical")
+        st.error("🔴 Critical")
 
-    st.write(f"⚠ Risk Level: {risk}")
-
-    # Parameter Check
-    st.subheader("📊 Parameter Check")
-    st.write(f"Temperature: {temp} / 85 (Safe)")
-    st.write(f"Vibration: {vib} / 15 (Safe)")
-    st.write(f"Sound: {sound} / 60 (Safe)")
-
-    # Predict Button
+    # Predict
     if st.button("🔍 Analyze Engine"):
 
         pred = model.predict([[temp, vib, sound]])[0]
@@ -113,7 +101,6 @@ with tab1:
 
         st.session_state.last_pred = pred
         st.session_state.last_label = label
-        st.session_state.last_conf = conf
         st.session_state.count += 1
 
         time_now = datetime.now().strftime("%d-%b %H:%M:%S")
@@ -122,7 +109,6 @@ with tab1:
             [time_now, temp, vib, sound, label, round(conf, 2)]
         )
 
-        # Result
         st.subheader("🧠 Prediction Result")
 
         if pred == 0:
@@ -133,7 +119,7 @@ with tab1:
             st.error(f"❌ {label} ({conf:.2f}%)")
             st.error("🚨 ALERT: Immediate attention required!")
 
-        # Gauge Chart
+        # Gauge
         fig = go.Figure(go.Indicator(
             mode="gauge+number",
             value=health_score,
@@ -149,11 +135,9 @@ with tab1:
         ))
         st.plotly_chart(fig)
 
-    # Last Prediction
     if "last_label" in st.session_state:
         st.info(f"Last Prediction: {st.session_state.last_label}")
 
-    # Prediction Count
     st.write(f"Total Predictions: {st.session_state.count}")
 
 # -----------------------------
@@ -175,13 +159,12 @@ with tab2:
         st.subheader("🛠 Recommended Action")
 
         if st.session_state.last_pred == 2:
-            st.write("• Check spark plug")
-            st.write("• Inspect fuel system")
+            st.write("• Check engine components")
             st.write("• Visit service center")
         elif st.session_state.last_pred == 1:
             st.write("• Schedule maintenance")
         else:
-            st.write("• System is working normally")
+            st.write("• System normal")
 
     else:
         st.info("Run prediction first")
@@ -202,16 +185,19 @@ with tab3:
 
         st.dataframe(df, use_container_width=True)
 
-        # Simple Graph
-        st.subheader("📈 Temperature Trend")
-        st.line_chart(df.set_index("Time")["Temp"])
+        # ✅ FIXED GRAPH
+        if len(st.session_state.history) > 1:
+            st.subheader("📈 Temperature Trend")
+            st.line_chart(df.set_index("Time")["Temp"])
+        else:
+            st.info("Add more predictions to see graph")
 
         # Download
         csv = df.to_csv(index=False).encode("utf-8")
         st.download_button("⬇ Download Report", csv, "engine_report.csv")
 
     else:
-        st.info("No predictions yet. Start analyzing engine.")
+        st.info("No predictions yet")
 
 # -----------------------------
 # RESET
